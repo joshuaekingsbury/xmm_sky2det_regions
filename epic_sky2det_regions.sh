@@ -237,6 +237,7 @@ do
     sign=""
     shape=""
     shape_params=""
+    shape_params_xmm=""
     fmt=""
 
     det_coords_str=""
@@ -302,6 +303,7 @@ do
         #det_coord_str=$(det_str2css "$det_coord_str")
         
         shape_params="$radius_pixels"
+        shape_params_xmm="$shape_params"
 
     elif [[ "$shape" == "ellipse" ]]; then
         ## ELLIPSE; SEMI_A(as),SEMI_B(as),ROTATION(deg) 
@@ -313,6 +315,7 @@ do
         rotation=$(sky2det_rot "${line%%","*}" "$position_angle")
 
         shape_params="$semi_a_pixels,$semi_b_pixels,$rotation"
+        shape_params_xmm="$shape_params"
 
     elif [[ "$shape" == "box" ]]; then
         ## BOX; WIDTH(as),HEIGHT(as),ROTATION(deg)
@@ -320,10 +323,13 @@ do
         height=$(angular2degree "${line%%","*}"); line="${line#*","}"
 
         width_pixels=$(degree2pixel "$width" "$deg_per_pixel")
+        width_pixels_xmm=$(echo "scale=10; $width_pixels/2.0" | bc -q)
         height_pixels=$(degree2pixel "$height" "$deg_per_pixel")
+        height_pixels_xmm=$(echo "scale=10; $height_pixels/2.0" | bc -q)
         rotation=$(sky2det_rot "${line%%","*}" "$position_angle")
 
         shape_params="$width_pixels,$height_pixels,$rotation"
+        shape_params_xmm="$width_pixels_xmm,$height_pixels_xmm,$rotation"
 
     elif [[ "$shape" == "polygon" ]]; then
         leading_comma=""
@@ -354,6 +360,7 @@ do
                 # $shape_params is initially empty, and should not contain a leading comma
                 # setting $leading_comma to contain a comma after first pass prevents unexpected comma
                 shape_params="$shape_params$leading_comma$poly_det_coords"
+                shape_params_xmm="$shape_params"
                 leading_comma=","
             fi
         done
@@ -375,10 +382,10 @@ do
 
     #shape_params=$(echo "$shape_params" | sed 's/,/ /g') # To split up comma separated into space separated
     
-    det_reg_str_xmm="&&$sign((DETX,DETY) IN $shape($det_x,$det_y,$shape_params))"
+    det_reg_str_xmm="&&$sign((DETX,DETY) IN $shape($det_x,$det_y,$shape_params_xmm))"
     echo $det_reg_str_xmm
 
-    echo "$det_reg_str_xmm" >> "$outreg.txt"
+    echo -n "$det_reg_str_xmm" >> "$outreg.txt"
 
     ## Expected input/outputs
     #-circle(9:56:50.9163,+69:50:32.120,111.974")
