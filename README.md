@@ -7,8 +7,8 @@ Currently runs from placing inside analysis directory
 Takes two arguments; <detector><exposure>-obj-image-sky.fits, ds9 region file in [DS9/Funtools, CIAO, SAOtng] formats  
 Third optional argument is output file name (expected without file extension!)  
 Output are two region files in detector coordinates  
-  -<detector><exposure>_outfile.reg (DS9 formatted)  
-  -<detector><exposure>_outfile.txt (XMM formatted)  
+  -&lt;detector&gt;&lt;exposure&gt;_outfile.reg (DS9 formatted)  
+  -&lt;detector&gt;&lt;exposure&gt;_outfile.txt (XMM formatted)  
   
 # Pre-reqs  
 bc - Basic Calculator 1.07.1  
