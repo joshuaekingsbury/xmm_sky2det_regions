@@ -1,7 +1,7 @@
 # xmm_sky2det_regions  
   
-Converts DS9 regions files into detector coordinates for use with mos-spectra/pn-spectra
-Handles circles, ellipses, boxes (polygons almost implemented)
+Converts DS9 regions files into detector coordinates for use with mos-spectra/pn-spectra  
+Handles circles, ellipses, boxes (polygons almost implemented)  
   
 Currently runs from placing inside analysis directory  
 Takes two arguments; xxxxxxxx-obj-image-sky-fits, ds9 region file in [DS9/Funtools, CIAO, SAOtng] formats  
