@@ -92,6 +92,7 @@ function hr2deg(){
 }
 
 function ra_hr2deg_decimal(){
+    echo test2
     local decimal=$(xms2decimal $1)
     local decimal=$(hr2deg $decimal)
     echo "$decimal"
@@ -191,7 +192,8 @@ function angular2degree(){
 function degree2pixel(){
     local degree=$1
     local degree_per_pixel=$2
-    local pixels=$(echo "scale=10; $degree/$degree_per_pixel" | bc -q)
+    #local pixels=$(echo "scale=10; $degree/$degree_per_pixel" | bc -q)
+    local pixels=$(echo "scale=0; $degree/$degree_per_pixel" | bc -q) # reducing output character count
     echo "$pixels"
 }
 #echo $deg_per_pixel
