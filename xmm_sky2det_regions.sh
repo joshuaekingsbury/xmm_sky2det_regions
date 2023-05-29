@@ -53,7 +53,7 @@ deg_per_pixel=$(gethead REFYCDLT "$skyfile")
 ## Header returns value in scientific notation; bc cannot interpret
 ## Using awk and printf as suggested here: https://stackoverflow.com/a/12882612
 deg_per_pixel=$(echo "$deg_per_pixel" | awk '{printf("%.15f\n", $1)}')
-# echo $deg_per_pixel
+echo Degree Per Pixel: $deg_per_pixel
 
 ####
 ##  A slew of helper functions
@@ -82,7 +82,7 @@ function xms2decimal(){
     # Take the seconds value, divide by 60, and add to the decimal
     local decimal=$(echo "scale=10; $decimal+${xms%%:*}/3600.0" | bc -q)
 
-    echo "$decimal"
+    #echo "xms2decimal:" "$xms" to "$decimal"
 }
 #xms2decimal "69:50:32.120"
 
@@ -92,6 +92,7 @@ function hr2deg(){
 }
 
 function ra_hr2deg_decimal(){
+    echo test2
     local decimal=$(xms2decimal $1)
     local decimal=$(hr2deg $decimal)
     echo "$decimal"
@@ -101,7 +102,7 @@ function dec_deg_decimal(){
     local dms=$1
 
     local sign=${dms:0:1}
-    
+
     ## Save sign
     if [[ "$sign" != "+" && "$sign" != "-" ]]; then
         local sign=""
@@ -266,12 +267,23 @@ do
     line="${line#*"("}" # Everything right of first "("
     line="${line%")"*}" # Everything left of last ")"
 
-    #echo ${line%%","*}
-    ## Assuming first two values inside () are ra and dec; extract and convert to decimal
-    ra_hms="${line%%","*}"
-    ra=$(ra_hr2deg_decimal "${line%%","*}"); line="${line#*","}"
-    dec_dms="${line%%","*}"
-    dec=$(dec_deg_decimal "${line%%","*}"); line="${line#*","}"
+    ## Assuming first two values inside () are ra and dec in hh:mm:ss
+    ## Run rudimentary check for ":" to differentiate format (hh:mm:ss vs deg)
+    ## If ":" found, run ra_hr2deg; else assume input was degrees and set ra=$ra_hms
+    ra_hms="${line%%","*}"; line="${line#*","}" #trim assigned value from front of line
+    if [[ ":" =~ "${ra_hms}" ]] ;then
+        ra=$(ra_hr2deg_decimal "${ra_hms}")
+    else
+        ra="${ra_hms}"
+    fi
+    echo test
+
+    dec_dms="${line%%","*}"; line="${line#*","}"
+    if [[ ":" =~ "${dec_dms}" ]] ;then
+        dec=$(dec_deg_decimal "${dec_dms}")
+    else
+        dec="${dec_dms}"
+    fi
     #echo "$ra_hms;$ra"; echo "$dec_dms;$dec"; echo $line
 
     det_coords=$(sky2det_coord $ra $dec)
