@@ -9,6 +9,9 @@ Third optional argument is output file name (expected without file extension!)
 Output are two region files in detector coordinates  
   -&lt;detector&gt;&lt;exposure&gt;_outfile.reg (DS9 formatted)  
   -&lt;detector&gt;&lt;exposure&gt;_outfile.txt (XMM formatted)  
+
+# Sky (left) vs Detector (right)
+![This is an image](/ds9_sky_vs_detector.jpeg)
   
 # Pre-reqs  
 bc - Basic Calculator 1.07.1  
