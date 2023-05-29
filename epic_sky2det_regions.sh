@@ -38,11 +38,11 @@ inreg=$2 # Region file in a ds9 fk5 format (./cap1.reg)
 det=$(gethead INSTRUME "$skyfile")
 det_lower=$(echo "$det" | tr '[:upper:]' '[:lower:]')
 expid=$(gethead EXPIDSTR "$skyfile")
-outreg=${3-"${det_lower:1}$expid"}
+outreg=${3:-"${det_lower:1}${expid}_${inreg%.*}"}
 
 # Create/overwrite region files
-> "$outreg.txt"
-> "$outreg.reg"
+> "$outreg.txt"; echo "$outreg.txt"
+> "$outreg.reg"; echo "$outreg.reg"
 
 # For finding relative rotation angle
 position_angle=$(gethead PA_PNT "$skyfile")
@@ -325,8 +325,40 @@ do
 
         shape_params="$width_pixels,$height_pixels,$rotation"
 
+    elif [[ "$shape" == "polygon" ]]; then
+        leading_comma=""
+
+        while [[ "$line" ]]; do
+
+            if [[ ! "$line" == *","* ]]; then
+                break
+            fi
+
+            poly_ra_hms="${line%%","*}"
+            poly_ra=$(ra_hr2deg_decimal "${line%%","*}"); line="${line#*","}"
+            poly_dec_dms="${line%%","*}"
+            poly_dec=$(dec_deg_decimal "${line%%","*}"); line="${line#*","}"
+
+            poly_det_coords=$(sky2det_coord $poly_ra $poly_dec)
+
+            ## esky2det spits outs strings of "*" if it fails to find a proper conversion
+            ## If not accounted for the "*" can expand later into a list of files in directory and break code
+            ## If found, then skip the current polygon region
+            if [[ "$poly_det_coords" == *"*"* ]]; then
+                echo "$line"
+                echo "$poly_det_coords"
+                echo "The detector coordinates for $poly_ra_hms;$poly_ra and $poly_dec_dms;$poly_dec are supposedly out-of-bounds of detector."
+                echo "Skipping polygon region on line $line_num."
+                break
+            else
+                # $shape_params is initially empty, and should not contain a leading comma
+                # setting $leading_comma to contain a comma after first pass prevents unexpected comma
+                shape_params="$shape_params$leading_comma$poly_det_coords"
+                leading_comma=","
+            fi
+        done
     else
-        echo "Not circle, ellipse, or box. Skipping region."
+        echo "Not circle, ellipse, box, or polygon. Skipping region."
         continue
     fi
 
@@ -350,6 +382,7 @@ do
 
     ## Expected input/outputs
     #-circle(9:56:50.9163,+69:50:32.120,111.974")
+
     #-circle(12422.0,4758.4,2239.4799935820) 
     #&&!((DETX,DETY) IN circle(12422.0,4758.4,2239.4799935820))
 
