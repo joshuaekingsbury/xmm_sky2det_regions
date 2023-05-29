@@ -1,10 +1,38 @@
 #!/bin/bash
 
+## Currently runs from placing inside analysis directory
+## Takes two arguments; xxxxxxxx-obj-image-sky-fits, ds9 region file in [DS9/Funtools, CIAO, SAOtng] formats
+## Third optional argument is output file name (expected without file extension!)
+## Output are two region files in detector coordinates
+##  -outfile.reg (DS9 formatted)
+##  -outfile.txt (XMM formatted)
+
 ## Pre-reqs
 # bc - Basic Calculator 1.07.1
 # wcstools 3.9.5
 
-#
+## Make sure to have SAS paths set appropriately
+## SAS_CCFPATH, SAS_CCF and SAS_ODF
+
+####
+## Example
+####
+
+## ds9.reg contains the region:
+##  box(9:56:35.9111,+69:36:53.095,656.723",85.926",320.71996) # color=white width=4
+
+## [USER analysis]$ ./sky2det.sh mos1S001-obj-image-sky.fits ds9.reg
+
+## Output detector regions in files
+## outfile.reg:
+##  box(596.9,-6683.9,13134.4599958949,1718.5199975862,358.561930869141) # color=white width=4
+## outfile.txt:
+##  &&((DETX,DETY) IN box(596.9,-6683.9,13134.4599958949,1718.5199975862,358.561930869141))
+
+####
+##  Setup inputs, outputs, and get necessary values from fits file header
+####
+
 skyfile=$1 # (./mos1S001-obj-image-sky.fits)
 inreg=$2 # Region file in a ds9 fk5 format (./cap1.reg)
 det=$(gethead INSTRUME "$skyfile")
@@ -12,23 +40,24 @@ det_lower=$(echo "$det" | tr '[:upper:]' '[:lower:]')
 expid=$(gethead EXPIDSTR "$skyfile")
 outreg=${3-"${det_lower:1}$expid"}
 
-#
+# Create/overwrite region files
 > "$outreg.txt"
 > "$outreg.reg"
 
 # For finding relative rotation angle
 position_angle=$(gethead PA_PNT "$skyfile")
 
-# # For getting scale conversion
-# ra_point=$(gethead RA_PNT "$skyfile")
-# dec_point=$(gethead DEC_PNT "$skyfile")
-
+# For scaling shapes appropriately
 #deg_per_pixel=$(gethead REFXCDLT "$skyfile")
 deg_per_pixel=$(gethead REFYCDLT "$skyfile")
 ## Header returns value in scientific notation; bc cannot interpret
 ## Using awk and printf as suggested here: https://stackoverflow.com/a/12882612
 deg_per_pixel=$(echo "$deg_per_pixel" | awk '{printf("%.15f\n", $1)}')
 # echo $deg_per_pixel
+
+####
+##  A slew of helper functions
+####
 
 function xms2decimal(){
     local xms=$1
@@ -55,7 +84,6 @@ function xms2decimal(){
 
     echo "$decimal"
 }
-
 #xms2decimal "69:50:32.120"
 
 function hr2deg(){
@@ -144,15 +172,6 @@ function sky2det_rot(){
 }
 #sky2det_rot 319.15689 315
 
-# function scale_factor(){
-#     sky_1_ra=$1
-#     sky_1_dec=$2
-#     sky_2_ra=$(echo "scale=10; $1" | bc -q)
-#     sky_2_dec=$(echo "scale=10; $2+$3" | bc -q)
-#     det_1=$(sky2det_coord $sky_1_ra $sky_1_dec)
-#     det_2=$(sky2det_coord $sky_2_ra $sky_2_dec)
-# }
-
 function angular2degree(){
     local angular=$1
     if [[ "$angular" == *"'"* ]]; then
@@ -180,34 +199,41 @@ function arcsec2pixel(){
 
     local degree_per_pixel=$2
 
-    local pixels=$(degree2pixel $degree $degree_per_pixel )
+    local pixels=$(degree2pixel $degree $degree_per_pixel)
     echo "$pixels"
 }
 #arcsec2pixel 111.974 $deg_per_pixel
 
+####
+##  Begin reading file, converting regions, and writing out region-by-region
+####
+
+line_num=0
+
 while read -r line
 do
+    line_num=$((line_num+=1))
+
     ## Removes header line and any other comment lines
     ## Removes parenthesis containing line in header of SAOtng region format
     if [[ "${line:0:1}" == "#" ]]; then
+        echo "***Skipping line $line_num as comment (#)"
         continue
     fi
 
     ## Assuming only remaining lines from ds9 formats (non-image; non-xy) are regions
     if [[ "${line}" != *"("* ]]; then
+        echo "***Skipping line $line_num without \"(\""
         continue
     fi
 
     ## Now only lines containing regions should be read
-
     exclude=false
     sign=""
     shape=""
     shape_params=""
     fmt=""
 
-    #conversion_str=""
-    #converted_str=""
     det_coords_str=""
     det_reg_str_ds9=""
     det_reg_str_xmm=""
@@ -220,7 +246,7 @@ do
     fi
 
     shape="${line%"("*}"
-    ## Trim leading "+" in case of SAOtng format regions
+    ## Trim leading "+" from shape in case of SAOtng format regions
     shape="${shape#*"+"}"
 
     fmt="${line#*")"}"
@@ -245,7 +271,7 @@ do
     ## If found, then skip the current region
     if [[ "$det_coords" == *"*"* ]]; then
         echo "The detector coordinates for $ra_hms;$ra and $dec_dms;$dec are supposedly out-of-bounds of detector."
-        echo "Skipping this region."
+        echo "Skipping region on line $line_num."
         continue
     fi
 
@@ -270,7 +296,6 @@ do
         #det_coord_str=$(esky2det datastyle=user ra=$ra dec=$dec instrument=$det checkfov=no outunit=det withheader=no calinfostyle=set calinfoset=$skyfile verbosity=0)
         #det_coord_str=$(det_str2css "$det_coord_str")
         
-        #shape_params_ds9="$radius_as"
         shape_params="$radius_pixels"
 
     elif [[ "$shape" == "ellipse" ]]; then
@@ -282,7 +307,6 @@ do
         semi_b_pixels=$(degree2pixel "$semi_b" "$deg_per_pixel")
         rotation=$(sky2det_rot "${line%%","*}" "$position_angle")
 
-        #shape_params_ds9="$semi_a_as,$semi_b_as,$rotation"
         shape_params="$semi_a_pixels,$semi_b_pixels,$rotation"
 
     elif [[ "$shape" == "box" ]]; then
@@ -302,7 +326,7 @@ do
     fi
 
     ## ds9 Region str
-    det_reg_str_ds9="$sign$shape($det_x,$det_y,$shape_params) $fmt"
+    det_reg_str_ds9="$sign$shape($det_x,$det_y,$shape_params)$fmt"
     echo $det_reg_str_ds9
 
     echo "$det_reg_str_ds9" >> "$outreg.reg"
@@ -314,13 +338,15 @@ do
 
     #shape_params=$(echo "$shape_params" | sed 's/,/ /g') # To split up comma separated into space separated
     
-    #-circle(9:56:50.9163,+69:50:32.120,111.974")
-    #-circle(12422.0,4758.4,2239.4799935820) 
-    #&&!((DETX,DETY) IN circle(12422.0,4758.4,2239.4799935820))
     det_reg_str_xmm="&&$sign((DETX,DETY) IN $shape($det_x,$det_y,$shape_params))"
     echo $det_reg_str_xmm
 
     echo "$det_reg_str_xmm" >> "$outreg.txt"
+
+    ## Expected input/outputs
+    #-circle(9:56:50.9163,+69:50:32.120,111.974")
+    #-circle(12422.0,4758.4,2239.4799935820) 
+    #&&!((DETX,DETY) IN circle(12422.0,4758.4,2239.4799935820))
 
 
     #echo "$line"
