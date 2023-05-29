@@ -92,7 +92,6 @@ function hr2deg(){
 }
 
 function ra_hr2deg_decimal(){
-    echo test2
     local decimal=$(xms2decimal $1)
     local decimal=$(hr2deg $decimal)
     echo "$decimal"
@@ -276,7 +275,6 @@ do
     else
         ra="${ra_hms}"
     fi
-    echo test
 
     dec_dms="${line%%","*}"; line="${line#*","}"
     if [[ ":" =~ "${dec_dms}" ]] ;then
