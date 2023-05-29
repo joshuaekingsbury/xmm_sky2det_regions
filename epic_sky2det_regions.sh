@@ -161,7 +161,12 @@ function sky2det_rot(){
     local sky_reg_angle=$2
 
     #local det_reg_angle=$(echo "scale=0; ($det_reg_angle+90.0)%360.0" | bc -q)
-    local det_reg_angle=$(echo "scale=10; $position_angle-$sky_reg_angle" | bc -q)
+    if [[ "$det" == "EMOS1" ]]; then
+        local det_reg_angle=$(echo "scale=10; $position_angle-$sky_reg_angle" | bc -q)
+    else
+        local det_reg_angle=$(echo "scale=10; $position_angle-$sky_reg_angle" | bc -q)
+        local det_reg_angle=$(echo "scale=10; $det_reg_angle+90.0" | bc -q)
+    fi
     
     ## Next make sure is within [0,360]; Assuming both inputs are always each [0,360]
     ## Add 360 and then take remainder in case value is negative
