@@ -22,7 +22,7 @@ SAS_CCFPATH, SAS_CCF and SAS_ODF
 ds9.reg contains the region:  
  box(9:56:35.9111,+69:36:53.095,656.723",85.926",320.71996) # color=white width=4  
   
-[USER analysis]$ ./epic_sky2det_regions.sh mos1S001-obj-image-sky.fits ds9.reg  
+[USER analysis]$ ./xmm_sky2det_regions.sh mos1S001-obj-image-sky.fits ds9.reg  
   
 Output detector regions in files  
  mos1S001_ds9.reg:  
