@@ -214,6 +214,9 @@ function arcsec2pixel(){
 ####
 
 line_num=0
+build_include_set=false
+initial_set=true
+set_switch=false
 
 while read -r line
 do
@@ -243,6 +246,7 @@ do
     det_coords_str=""
     det_reg_str_ds9=""
     det_reg_str_xmm=""
+    and_or=""
 
     ## If line start with box,circle,ellipse,-,!
     if [[ "${line:0:1}" == "-" || "${line:0:1}" == "!" ]]; then
@@ -382,7 +386,49 @@ do
 
     #shape_params=$(echo "$shape_params" | sed 's/,/ /g') # To split up comma separated into space separated
     
-    det_reg_str_xmm="&&$sign((DETX,DETY) IN $shape($det_x,$det_y,$shape_params_xmm))"
+# [kingsbury.18@ast-galaxy analysis]$ myArray=("cat" "dog" "mouse" "frog")
+# [kingsbury.18@ast-galaxy analysis]$ echo ${myArray[@]}
+# cat dog mouse frog
+# [kingsbury.18@ast-galaxy analysis]$ myArray[0]=${myArray[0]}"food"
+# [kingsbury.18@ast-galaxy analysis]$ echo ${myArray[@]}
+# catfood dog mouse frog
+# [kingsbury.18@ast-galaxy analysis]$ myArray+=("food")
+# [kingsbury.18@ast-galaxy analysis]$ echo ${myArray[@]}
+# catfood dog mouse frog food
+
+    det_reg_str_xmm="(DETX,DETY) IN $shape($det_x,$det_y,$shape_params_xmm)"
+
+    # Determine whether initial region is including or excluding 
+    if [[ $initial_set == true ]]; then
+        if [[ "$sign" == "" ]]; then
+            build_include_set=true
+        else
+            build_include_set=false
+        fi
+        det_reg_str_xmm="&&$sign($det_reg_str_xmm"
+    fi
+
+    # If region sign doesn't match current include/exclude set, trigger a set switch
+    if [[ "$sign" == "" && $build_include_set == false ]]; then
+        set_switch=true
+        build_include_set=true
+        and_or="||"
+    elif [[ "$sign" == "!" && $build_include_set == true ]]; then
+        set_switch=true
+        build_include_set=false
+        and_or="&&"
+    fi
+    
+    if [[ $initial_set == false && $set_switch == true ]]; then
+        det_reg_str_xmm=")$and_or$sign($det_reg_str_xmm"
+        set_switch=false
+    elif [[ $initial_set == false && $set_switch == false ]]; then
+        det_reg_str_xmm="||$det_reg_str_xmm"
+    fi
+
+    initial_set=false
+
+    # det_reg_str_xmm="&&$sign((DETX,DETY) IN $shape($det_x,$det_y,$shape_params_xmm))"
     echo $det_reg_str_xmm
 
     echo -n "$det_reg_str_xmm" >> "$outreg.txt"
@@ -396,3 +442,5 @@ do
 
     #echo "$line"
 done < "$inreg"
+
+echo -n ")" >> "$outreg.txt"
